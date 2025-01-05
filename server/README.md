@@ -1,1 +1,1 @@
-#Learning backend with a MERN stack project
+Strivio is a feature-rich task management application designed to streamline project workflows, improve collaboration, and enhance productivity. It supports task organization, team communication, and progress tracking.

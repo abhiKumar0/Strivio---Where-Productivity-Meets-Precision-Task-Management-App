@@ -5,83 +5,55 @@ import ApiResponse from "../utils/ApiResponse.js";
 import { OPTIONS } from "../constants.js";
 
 
-const generateAccessTokenAndRefreshToken = async(userId) => {
-    try {
-        const user = await User.findById(userId);
-        if (!user) {
-            throw new ApiError(404, "User not found");
-        }
-        const accessToken = await user.generateAccessToken();
-        const refreshToken = await user.generateRefreshToken();
-
-        return {accessToken, refreshToken};
-    } catch (error) {
-        throw new ApiError(500,"Error generating access token and refresh token");
-        
-    }
-}
+const getUsers = AsyncHandler(async (req, res) => {
+  const users = await User.find().select("-password -refreshToken");
+  if (!users) {
+    throw new ApiError(404, "Users not found");
+  }
 
 
-const register = AsyncHandler(async (req, res) => {
-    const {fullName, username, email, password} = req.body;
-    // console.log(req.body)
-    if (!fullName || !username || !email || !password) {
-        return res.status(400).json({message: "Please fill in all fields"});
-    }
-
-    const existingUser = await User.findOne({
-        $or: [{username}, {email}]
-    })
-
-    if (existingUser){
-        throw new ApiError(400, "User already exists");
-    }
-
-    const user = await User.create({
-        fullName,
-        username,
-        email,
-        password
-    })
-
-    const newUser = await User.findById(user._id).select("-password -refreshToken");
-    if (!newUser) {
-        throw new ApiError(500, "Something went while registering the user");
-    }
-
-    return res.status(200).json(new ApiResponse(200, newUser, "User registered successfully"));
+  return res.status(200).json(new ApiResponse(200, users, "Users retrieved successfully"));
 })
 
-const login = AsyncHandler(async (req, res) => {
-    //get data from frontend
-    //validation
-    //check if user exists
-    //confirm password
-    //return if correct information
-    const {username, email, password} = req.body;
-    if (!(username || email)) {
-        throw new ApiError(400, "Please provide your username or email");
-    }
+const updateUserRole = AsyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const { role } = req.body;
+  if (!userId || !role) {
+    throw new ApiError(400, "User id and role are required");
+  }
 
-    const user = await User.findOne({$or: [{username}, {email}]});
-    if (!user) {
-        throw new ApiError(404, "User not found");
-    }
+  if (!["admin", "member", "leader"].includes(role)) {
+    throw new ApiError(400, "Invalid role");
+  }
 
-    const isPasswordCorrect = await user.matchPassword(password);
-    if(!isPasswordCorrect) {
-        throw new ApiError(400, "Invalid credentials");
-    }
+  const user = await User.findById(userId);
 
-    const {accessToken, refreshToken} = await generateAccessTokenAndRefreshToken(user._id);
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
 
-    const loggedUser = await User.findById(user._id).select("-password -refreshToken");
+  user.role = role;
+  await user.save();
 
-    return res.status(200).cookie("refreshToken", refreshToken, OPTIONS).cookie("accessToken", accessToken, OPTIONS).json(new ApiResponse(200, {user: loggedUser, accessToken, refreshToken}, "User logged in successfully"));
+  return res.status(200).json(new ApiResponse(200, user, "User role updated successfully"));
+})
 
+const getUser = AsyncHandler(async (req, res) => {
+  const {userId} = req.params;
+  if (!userId) {
+    throw new ApiError(400, "User id is required");
+  }
+  const user = await User.findById(userId).select("-password -refreshToken");
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  return res.status(200).json(new ApiResponse(200, user, "User retrieved successfully"));
 })
 
 export {
-    register,
-    login
+    getUsers,
+    updateUserRole,
+    getUser
 }

@@ -9,12 +9,6 @@ const UserSchema = new Schema(
       required: [true, "Please provide your full name"],
       trim: true,
     },
-    username: {
-      type: String,
-      required: [true, "Please provide your username"],
-      trim: true,
-      unique: true,
-    },
     email: {
       type: String,
       required: [true, "Please provide your email"],
@@ -23,20 +17,30 @@ const UserSchema = new Schema(
     },
     password: {
       type: String,
-      required: [true, "Please provide your password"],
+      required: function () {
+        return this.provider === "email"
+      },
       trim: true,
       minlength: [6, "Password must be at least 6 characters"],
+    },
+    provider: {
+      type: String,
+      enum: ["email", "google"],
+      default: "email",
     },
     role: {
       type: String,
       enum: ["leader", "member", "admin"],
       default: "member",
     },
+    googleId: String,
     avatar: {
       type: String,
       default: "https://res.cloudinary.com/dy5hgr3ie/image/upload/v1622193986/avatar/avatar-1.png",
     },
-    refreshToken: String,
+    refreshToken: {
+      type: String,
+    },
   },
   {
     timestamps: true,
